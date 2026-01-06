@@ -1,0 +1,280 @@
+/* Full screen split */
+.dashboard-wrapper {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: "Segoe UI", sans-serif;
+
+  background-image: url("/assets/img/landing_page_bg.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+
+/* LEFT PANEL */
+.left-panel {
+  width: 450px;
+  min-width: 250px;
+  background-color: #7d99c62f;
+  padding: 24px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+}
+
+.left-logo {
+  width: 80px;
+  margin: 0 auto;
+}
+
+.left-panel h1 {
+  text-align: center;
+  font-size: 24px;
+}
+
+.left-panel .details p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+/* Logout & User Info */
+.logout-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.user-name {
+  font-weight: bold;
+  color: #fff;
+  font-size: 16px;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background-color: #2a5298;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background-color: #1e3c72;
+}
+
+/* Tabs */
+.tab-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tab-buttons button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  background-color: #2a5298;
+  color: white;
+}
+
+.tab-buttons button.active {
+  background-color: #1e3c72;
+  font-weight: bold;
+}
+
+/* Logs list */
+.log-entry {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.log-entry.selected {
+  border-color: #1e3c72;
+  background-color: #9bb1f7;
+}
+
+/* Date filter */
+.date-filter {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.date-filter label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.date-filter input[type="date"] {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: #2a5298;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+}
+
+.date-filter input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.date-filter button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #1e3c72;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.date-filter button:hover {
+  background-color: #16325a;
+}
+
+/* RIGHT PANEL */
+.right-panel {
+  flex: 1;
+  position: relative;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .dashboard-wrapper {
+    flex-direction: column; /* stack panels */
+  }
+
+  .left-panel {
+    width: 100%;
+    min-width: 100%;
+    max-height: 50vh; /* half screen height */
+    overflow-y: auto;
+  }
+
+  .right-panel {
+    height: 50vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .left-panel {
+    max-height: 45vh;
+  }
+
+  .right-panel {
+    height: 55vh; /* map takes more space */
+  }
+
+  .date-filter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .date-filter input,
+  .date-filter button {
+    width: 100%;
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: white;
+  padding: 50px;
+  border-radius: 10px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.modal-content.large {
+  width: 100%;
+  max-width: 1200px;
+  height: 700px ;
+  overflow: auto;
+}
+
+.chart-container {
+  width: 100%;
+  height: 450px; 
+  margin-top: 20px;
+}
+
+.summary-btn-large {
+  padding: 10px 20px;
+  background-color: #2a5298;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.summary-btn-large:hover {
+  background-color: #0033FF;
+}
+
+
+.summary-tabs button {
+  padding: 10px 18px;
+  margin-right: 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #e0e0e0;   /* default (inactive) */
+  color: #333;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.summary-tabs button:hover {
+  background-color: #cfcfcf;
+}
+
+/* ACTIVE TAB */
+.summary-tabs button.active {
+  background-color: #00096d;   /* 🔵 Moving default */
+  color: #fff;
+}
+
+
+.closeModalBtn{
+  margin-top: 40px;
+  width: 100%;
+  background-color: #2a5298;
+  color: white; 
+}
+
