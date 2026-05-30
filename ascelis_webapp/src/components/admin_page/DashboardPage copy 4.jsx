@@ -2,11 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../css/dashboard.css";
-import { ref as dbRefRealtime, onValue, remove, set } from "firebase/database";
+import { ref as dbRefRealtime, onValue, remove } from "firebase/database";
 import { database, auth, db } from "../../firebase";
 import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import Swal from "sweetalert2";
+
 // Chart imports
 import { Line } from "react-chartjs-2";
 import {
@@ -24,7 +25,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 // Leaflet imports
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import 'leaflet-routing-machine';
 
 // Fix Leaflet marker URLs
 delete L.Icon.Default.prototype._getIconUrl;
@@ -55,106 +55,9 @@ export default function DashboardPage() {
   const formattedToday = today.toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(formattedToday);
 
-  const mapInstanceRef = useRef(null);
-  const gpsMarkerRef = useRef(null);
-  const responderMarkerRef = useRef(null);
-  const routingControlRef = useRef(null);
-  
   const [showLogModal, setShowLogModal] = useState(false);
-  const [tracking, setTracking] = useState(false);
-  const trackingIntervalRef = useRef(null); // to hold interval ID
+
   const locationCache = useRef({});
-  const [responderLocation, setResponderLocation] = useState(null);
-  const timestamp = new Date().toISOString();
-  const responderIcon = new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
-
-  const formattedDate = responderLocation?.updatedAt
-    ? new Date(responderLocation.updatedAt)
-      .toLocaleString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      })
-      .replace(",", " |")
-      .replace("AM", "am")
-      .replace("PM", "pm")
-    : "N/A";
-
-  const updateResponderLocation = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    if (!navigator.geolocation) {
-      Swal.fire("Error", "Geolocation not supported.", "error");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const timestamp = new Date().toISOString();
-
-        // Save location + timestamp in state
-        setResponderLocation({ latitude, longitude, updatedAt: timestamp });
-
-        try {
-          const responderRef = dbRefRealtime(
-            database,
-            `ResponderLocations/${user.uid}`
-          );
-
-          await set(responderRef, {
-            uid: user.uid,
-            latitude,
-            longitude,
-            updatedAt: timestamp,
-          });
-
-        } catch (err) {
-          console.error("Error updating responder location:", err);
-        }
-      },
-      (error) => {
-        console.error("Location Error:", error.message);
-      }
-    );
-  };
-
-  useEffect(() => {
-    if (tracking) {
-      // Immediately update location once
-      updateResponderLocation();
-
-      // Then set interval
-      trackingIntervalRef.current = setInterval(() => {
-        updateResponderLocation();
-      }, 10000); // every 10 seconds
-    } else {
-      // Stop tracking
-      if (trackingIntervalRef.current) {
-        clearInterval(trackingIntervalRef.current);
-        trackingIntervalRef.current = null;
-      }
-    }
-
-    // Cleanup when component unmounts
-    return () => {
-      if (trackingIntervalRef.current) {
-        clearInterval(trackingIntervalRef.current);
-        trackingIntervalRef.current = null;
-      }
-    };
-  }, [tracking]);
 
   // Fetch current user info
   useEffect(() => {
@@ -271,242 +174,65 @@ export default function DashboardPage() {
     return () => unsubscribeLogs();
   }, []);
 
-  // Tracking effect 
-  // Single tracking effect
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    // Clear any previous interval
-    if (trackingIntervalRef.current) {
-      clearInterval(trackingIntervalRef.current);
-      trackingIntervalRef.current = null;
-    }
-
-    if (tracking) {
-      // Immediately update location once
-      updateResponderLocation();
-
-      // Start interval for every 10s
-      trackingIntervalRef.current = setInterval(() => {
-        updateResponderLocation();
-      }, 10000);
-    } else {
-      // Stop tracking completely
-      const responderRef = dbRefRealtime(database, `ResponderLocations/${user.uid}`);
-      remove(responderRef).catch(err => console.error(err));
-
-      if (responderMarkerRef.current) {
-        responderMarkerRef.current.remove();
-        responderMarkerRef.current = null;
-      }
-
-      setResponderLocation(null);
-    }
-
-    // Cleanup on unmount
-    return () => {
-      if (trackingIntervalRef.current) {
-        clearInterval(trackingIntervalRef.current);
-        trackingIntervalRef.current = null;
-      }
-    };
-  }, [tracking]);
-
   // Map
   useEffect(() => {
-    if (activeTab !== "realtime") return; // Only update map in Realtime tab
     if (!mapRef.current) return;
 
-    // Initialize map once
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView([14.1129, 122.9553], 16);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-        maxZoom: 20,
-      }).addTo(mapInstanceRef.current);
-    }
+    const defaultCoords = [14.1129, 122.9553];
+    const initialZoom = activeTab === "logs" ? 13 : 16;
 
-    const map = mapInstanceRef.current;
-
-    // GPS marker (always display)
-    if (gpsData?.latitude != null && gpsData?.longitude != null) {
-      if (!gpsMarkerRef.current) {
-        gpsMarkerRef.current = L.marker([gpsData.latitude, gpsData.longitude])
-          .addTo(map)
-          .bindPopup(`...`);
-      } else {
-        gpsMarkerRef.current.setLatLng([gpsData.latitude, gpsData.longitude]);
-        gpsMarkerRef.current.getPopup().setContent(`...`);
-      }
-      map.panTo([gpsData.latitude, gpsData.longitude]);
-    }
-
-    // Responder marker (only when tracking is active)
-    if (tracking && responderLocation?.latitude != null && responderLocation?.longitude != null) {
-      if (!responderMarkerRef.current) {
-        responderMarkerRef.current = L.marker(
-          [responderLocation.latitude, responderLocation.longitude],
-          { icon: responderIcon }
-        ).addTo(map)
-          .bindPopup(`<strong>Responder Location</strong><br/>Lat: ${responderLocation.latitude}<br/>Lng: ${responderLocation.longitude}<br/>Lng: ${responderLocation.longitude}<br/>Timestamp: ${formattedDate}`);
-      } else {
-        responderMarkerRef.current.setLatLng([responderLocation.latitude, responderLocation.longitude]);
-        responderMarkerRef.current.getPopup().setContent(`<strong>Responder Location</strong><br/>Lat: ${responderLocation.latitude}<br/>Timestamp: ${formattedDate}`);
-      }
-    } else if (!tracking && responderMarkerRef.current) {
-      // Remove marker if tracking stopped
-      responderMarkerRef.current.remove();
-      responderMarkerRef.current = null;
-    }
-
-  }, [gpsData, responderLocation, activeTab, tracking]);
-
-  // ================= MAP =================
-  useEffect(() => {
-  if (!mapRef.current) return;
-
-  // =============================
-  // INITIALIZE MAP ONCE
-  // =============================
-  if (!mapInstanceRef.current) {
-    mapInstanceRef.current = L.map(mapRef.current).setView([14.1129, 122.9553], 16);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
+    const map = L.map(mapRef.current).setView(defaultCoords, initialZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 20,
-    }).addTo(mapInstanceRef.current);
-  }
-
-  const map = mapInstanceRef.current;
-
-  // =============================
-  // FORMAT RESPONDER TIMESTAMP
-  // =============================
-  const formattedDate = responderLocation?.updatedAt
-    ? new Date(responderLocation.updatedAt)
-        .toLocaleString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        })
-        .replace(",", " |")
-        .replace("AM", "am")
-        .replace("PM", "pm")
-    : "N/A";
-
-  // =============================
-  // VICTIM MARKER
-  // =============================
-  if (gpsData?.latitude != null && gpsData?.longitude != null) {
-    const victimPopup = `
-      <div>
-        <p><strong>BPM:</strong> ${gpsData.BPM || "0"}</p>
-        <p><strong>SpO2:</strong> ${gpsData.spO2 || "0"}%</p>
-        <p><strong>Acceleration:</strong> ${
-          gpsData.accelX != null ? Math.max(0, gpsData.accelX).toFixed(2) : "0"
-        } m/s²</p>
-        <p><strong>Velocity:</strong> ${
-          gpsData.velocityX != null ? Math.max(0, gpsData.velocityX).toFixed(2) : "0"
-        } m/s</p>
-        <p><strong>Moving:</strong> ${gpsData.MotionStatus ? "Moving" : "Not Moving"}</p>
-        <p><strong>Latitude:</strong> ${gpsData.latitude}</p>
-        <p><strong>Longitude:</strong> ${gpsData.longitude}</p>
-        <p><strong>Location:</strong> ${gpsData.LocationName || "N/A"}</p>
-        <p><strong>DateTime:</strong> ${gpsData.DateTime}</p>
-      </div>
-    `;
-
-    if (!gpsMarkerRef.current) {
-      gpsMarkerRef.current = L.marker(
-        [gpsData.latitude, gpsData.longitude],
-        { icon: gpsIcon }
-      )
-        .addTo(map)
-        .bindPopup(victimPopup);
-
-      gpsMarkerRef.current.setZIndexOffset(1000); // 🔥 keep clickable
-    } else {
-      gpsMarkerRef.current.setLatLng([gpsData.latitude, gpsData.longitude]);
-      gpsMarkerRef.current.getPopup().setContent(victimPopup);
-    }
-  }
-
-  // =============================
-  // TRACKING ENABLED
-  // =============================
-  if (
-    tracking &&
-    responderLocation?.latitude != null &&
-    responderLocation?.longitude != null &&
-    gpsData?.latitude != null &&
-    gpsData?.longitude != null
-  ) {
-    const responderPopup = `
-      <strong>Responder Location</strong><br/>
-      Lat: ${responderLocation.latitude}<br/>
-      Lng: ${responderLocation.longitude}<br/>
-      Timestamp: ${formattedDate}
-    `;
-
-    // RED RESPONDER MARKER
-    if (!responderMarkerRef.current) {
-      responderMarkerRef.current = L.marker(
-        [responderLocation.latitude, responderLocation.longitude],
-        { icon: responderIcon }
-      )
-        .addTo(map)
-        .bindPopup(responderPopup);
-
-      responderMarkerRef.current.setZIndexOffset(1000); // 🔥 keep clickable
-    } else {
-      responderMarkerRef.current.setLatLng([
-        responderLocation.latitude,
-        responderLocation.longitude,
-      ]);
-      responderMarkerRef.current.getPopup().setContent(responderPopup);
-    }
-
-    // ROUTE (NO CLICK BLOCKING)
-    if (routingControlRef.current) {
-      map.removeControl(routingControlRef.current);
-    }
-
-    routingControlRef.current = L.Routing.control({
-      waypoints: [
-        L.latLng(gpsData.latitude, gpsData.longitude),
-        L.latLng(responderLocation.latitude, responderLocation.longitude),
-      ],
-      routeWhileDragging: false,
-      addWaypoints: false,
-      draggableWaypoints: false,
-      fitSelectedRoutes: false,
-      show: false,
-      createMarker: () => null, // 🔥 IMPORTANT FIX (prevents invisible blocking markers)
-      lineOptions: {
-        styles: [{ color: "red", weight: 5 }],
-      },
     }).addTo(map);
-  }
 
-  // =============================
-  // TRACKING DISABLED
-  // =============================
-  if (!tracking) {
-    if (responderMarkerRef.current) {
-      map.removeLayer(responderMarkerRef.current);
-      responderMarkerRef.current = null;
+    // Realtime marker
+    if (activeTab === "realtime" && gpsData && gpsData.latitude != null && gpsData.longitude != null) {
+      L.marker([gpsData.latitude, gpsData.longitude]).addTo(map)
+        .bindPopup(`<div>
+          <p><strong>BPM:</strong> ${gpsData.BPM || "0"}</p>
+          <p><strong>SpO2:</strong> ${gpsData.spO2 || "0"}%</p>
+          <p><strong>Acceleration:</strong> ${gpsData.accelX || "0"} m/s</p>
+          <p><strong>Velocitty:</strong> ${gpsData.velocityX || "0"} m/s</p>
+          <p><strong>Moving:</strong> ${gpsData.MotionStatus}</p>
+          <p><strong>Latitude:</strong> ${gpsData.latitude}</p>
+          <p><strong>Longitude:</strong> ${gpsData.longitude}</p>
+          <p><strong>Location:</strong> ${gpsData.LocationName}</p>
+          <p><strong>DateTime:</strong> ${gpsData.DateTime}</p>
+        </div>`);
+      map.setView([gpsData.latitude, gpsData.longitude], 16);
     }
 
-    if (routingControlRef.current) {
-      map.removeControl(routingControlRef.current);
-      routingControlRef.current = null;
+    // Logs markers
+    if (activeTab === "logs" && logs.length > 0) {
+      logs.filter(log => {
+        const logDate = new Date(log.DateTime);
+        const year = logDate.getFullYear();
+        const month = String(logDate.getMonth() + 1).padStart(2, "0");
+        const day = String(logDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}` === selectedDate;
+      }).forEach(log => {
+        if (log.latitude != null && log.longitude != null) {
+          L.marker([log.latitude, log.longitude]).addTo(map)
+            .bindPopup(`<div>
+              <p><strong>ID:</strong> ${log.id}</p>
+              <p><strong>BPM:</strong> ${log.heartRate || "0"}</p>
+              <p><strong>SpO2:</strong> ${log.spO2}</p>
+              <p><strong>Acceleration:</strong> ${gpsData.accelX || "0"} m/s</p>
+              <p><strong>Velocitty:</strong> ${gpsData.velocityX || "0"} m/s</p>
+              <p><strong>Moving:</strong> ${log.MotionStatus}</p>
+              <p><strong>Latitude:</strong> ${log.latitude}</p>
+              <p><strong>Longitude:</strong> ${log.longitude}</p>
+              <p><strong>Location:</strong> ${log.LocationName}</p>
+              <p><strong>DateTime:</strong> ${log.DateTime}</p>
+            </div>`);
+        }
+      });
     }
-  }
-}, [gpsData, responderLocation, tracking]);
+
+    return () => map.remove();
+  }, [gpsData, logs, activeTab, selectedDate]);
 
   // SUMMARY MODAL
   const openSummaryModalForDay = () => {
@@ -606,9 +332,6 @@ export default function DashboardPage() {
     setSelectedLog(log);
     setShowLogModal(true);
   };
-  const handleTrackingToggle = () => {
-    setTracking(prev => !prev);
-  };
 
   return (
     <div className="dashboard-wrapper">
@@ -664,15 +387,6 @@ export default function DashboardPage() {
                 <p><strong>Longitude:</strong> {gpsData.longitude}</p>
                 <p><strong>Location Name:</strong> {gpsData.LocationName}</p>
                 <p><strong>DateTime:</strong> {gpsData.DateTime}</p>
-
-
-                <button
-                  className="responder-btn"
-                  onClick={handleTrackingToggle}
-                  style={{ marginTop: "30px" }}
-                >
-                  {tracking ? "Stop Tracking" : "Start Tracking"}
-                </button>
               </>
             ) : <p>Loading Realtime data...</p>
           ) : (

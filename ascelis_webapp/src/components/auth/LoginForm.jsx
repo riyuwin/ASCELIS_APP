@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import "../../css/login.css";
@@ -15,6 +15,54 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false); // optional: prevent multiple clicks
+
+  // Check if user is already logged in on component mount
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        // User is signed in, check account status
+        try {
+          const docRef = doc(db, "AccountInformation", user.uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+
+            if (userData.accountStatus === "Verified") {
+              // Navigate based on role
+              if (userData.role === "Admin") {
+                navigate("/admin/menu");
+              } else {
+                navigate("/admin/dashboard");
+              }
+            } else {
+              // Account not verified, sign out and show message
+              await auth.signOut();
+              Swal.fire({
+                icon: "warning",
+                title: "Account Not Verified",
+                text: "Your account is still pending verification. Please wait for approval before logging in.",
+              });
+            }
+          } else {
+            // No user record, sign out
+            await auth.signOut();
+            Swal.fire({
+              icon: "error",
+              title: "No Account Found",
+              text: "No user record found in the database.",
+            });
+          }
+        } catch (error) {
+          console.error("Error checking user status:", error);
+          await auth.signOut();
+        }
+      }
+      // If no user, do nothing (show login form)
+    });
+
+    return () => unsubscribe(); // Cleanup listener
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

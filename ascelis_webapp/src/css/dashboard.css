@@ -152,23 +152,31 @@
 .right-panel {
   flex: 1;
   position: relative;
+  height: 100vh;
 }
-
+ 
 #map {
   width: 100%;
   height: 100%;
 }
 
+ @media (max-width: 768px) {
+  .right-panel {
+    height: 60vh; /* or 70vh */
+  }
+}
 /* ---------- Responsive ---------- */
 @media (max-width: 768px) {
   .dashboard-wrapper {
-    flex-direction: column; /* stack panels */
+    flex-direction: column;
+    /* stack panels */
   }
 
   .left-panel {
     width: 100%;
     min-width: 100%;
-    max-height: 50vh; /* half screen height */
+    max-height: 50vh;
+    /* half screen height */
     overflow-y: auto;
   }
 
@@ -183,7 +191,8 @@
   }
 
   .right-panel {
-    height: 55vh; /* map takes more space */
+    height: 55vh;
+    /* map takes more space */
   }
 
   .date-filter {
@@ -203,32 +212,31 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 999;
 }
-
 .modal-content {
   background: white;
-  padding: 50px;
+  padding: 40px 60px; /* dagdagan ng horizontal padding kung gusto mo mas malaki */
   border-radius: 10px;
-  max-width: 600px;
+  max-width: 800px;   /* palitan ang 600px -> 800px o gusto mong laki */
   width: 100%;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .modal-content.large {
   width: 100%;
-  max-width: 1200px;
-  height: 700px ;
+  max-width: 1400px; /* mas malaki para sa large modal */
+  height: 700px;
   overflow: auto;
 }
 
 .chart-container {
   width: 100%;
-  height: 450px; 
+  height: 450px;
   margin-top: 20px;
 }
 
@@ -253,7 +261,8 @@
   margin-right: 10px;
   border: none;
   border-radius: 8px;
-  background-color: #e0e0e0;   /* default (inactive) */
+  background-color: #e0e0e0;
+  /* default (inactive) */
   color: #333;
   font-weight: 600;
   cursor: pointer;
@@ -266,15 +275,70 @@
 
 /* ACTIVE TAB */
 .summary-tabs button.active {
-  background-color: #00096d;   /* 🔵 Moving default */
+  background-color: #00096d;
+  /* 🔵 Moving default */
   color: #fff;
 }
 
-
-.closeModalBtn{
-  margin-top: 40px;
-  width: 100%;
-  background-color: #2a5298;
-  color: white; 
+.responder-btn{
+  width: 100%; 
+  background-color: #ffc527;
+  color: #000000;
 }
 
+.closeModalBtn2 {
+  width: 100%;
+  background-color: #A9A9A9;
+  color: white;
+  flex: 1;
+  height: "40px";
+  color: "white"
+}
+
+.saveChangeBtn{
+  width: 100%;
+  background-color: #1E90FF;
+  color: white;
+  flex: 1;
+  height: "40px";
+  color: "white" 
+}
+
+
+.closeModalBtn {
+  width: 100%;
+  background-color: #2a5298;
+  color: white;
+} 
+
+.deleteBtn{
+  width: 100%;
+  background-color: #FF4C4C;
+  color: white;
+  flex: 1;
+  height: "40px";
+  color: "white" 
+}
+
+.modalButtonRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 40px;
+}
+
+.modalButtonRow button {
+  flex: 1;              /* same width */
+  height: 45px;         /* same height */
+  font-size: 14px;
+  border-radius: 6px;
+}
+.modalLogoWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.modalLogo {
+  width: 80px;      /* adjust size */
+  height: auto;
+}
