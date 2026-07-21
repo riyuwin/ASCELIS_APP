@@ -143,7 +143,7 @@ export default function Login() {
           className="login-logo"
         />
 
-        <h1 className="login-title">ASCELIS123</h1>
+        <h1 className="login-title">ASCELIS</h1>
         <p className="login-subtitle">Sign in to continue</p>
 
         <form onSubmit={handleSubmit}>
